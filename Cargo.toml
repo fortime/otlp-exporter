@@ -1,0 +1,26 @@
+[package]
+name = "otlp-exporter"
+version = "0.1.0"
+edition = "2021"
+description = "OTLP Exporter for the OpenTelemetry Collector"
+homepage = "https://github.com/fortime/otlp-exporter/tree/main"
+repository = "https://github.com/fortime/otlp-exporter/tree/main"
+readme = "README.md"
+categories = [
+    "development-tools::debugging",
+    "development-tools::profiling",
+    "asynchronous",
+]
+keywords = ["opentelemetry", "otlp", "exporter", "logging", "tracing", "metrics"]
+license-file = "LICENSE"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+opentelemetry-proto = "0.2.0"
+opentelemetry_api = { version = "0.19.0", default-features = false }
+
+[features]
+traces = ["opentelemetry_api/trace", "opentelemetry-proto/traces"]
+metrics = ["opentelemetry_api/metrics", "opentelemetry-proto/metrics"]
+logs = ["opentelemetry-proto/logs"]
