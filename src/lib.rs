@@ -1,14 +1,12 @@
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
-}
+#![doc = include_str!("../README.md")]
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+pub mod config;
+pub mod error;
+mod exporter;
+mod pipeline;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
-    }
-}
+#[cfg(feature = "metrics")]
+pub use pipeline::metric::MetricPipeline;
+#[cfg(feature = "traces")]
+pub use pipeline::trace::TracePipeline;
+pub use pipeline::{new_pipeline, Pipeline};

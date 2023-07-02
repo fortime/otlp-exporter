@@ -17,10 +17,38 @@ license-file = "LICENSE"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+futures = { version = "0.3.28", default-features = false, features = ["std"] }
+grpcio = { version = "0.12.1", optional = true, default-features = false }
+http = "0.2.9"
 opentelemetry-proto = "0.2.0"
 opentelemetry_api = { version = "0.19.0", default-features = false }
+opentelemetry_sdk = { version = "0.19.0", default-features = false }
+protobuf = { version = "2.28.0", optional = true }
+reqwest = { version = "0.11.18", default-features = false, optional = true, features = ["async-compression"] }
+serde_json = { version = "1.0.104", optional = true }
+thiserror = "1.0.41"
+tonic = { version = "0.8.3", optional = true, default-features = false, features = ["channel", "transport"] }
 
 [features]
-traces = ["opentelemetry_api/trace", "opentelemetry-proto/traces"]
-metrics = ["opentelemetry_api/metrics", "opentelemetry-proto/metrics"]
+traces = ["opentelemetry_api/trace", "opentelemetry_sdk/trace", "opentelemetry-proto/traces"]
+metrics = ["opentelemetry_api/metrics", "opentelemetry_sdk/metrics", "opentelemetry-proto/metrics"]
 logs = ["opentelemetry-proto/logs"]
+tls = []
+grpc = []
+grpcio = ["dep:grpcio", "opentelemetry-proto/gen-protoc", "protobuf", "grpc"]
+grpcio-tls = ["grpcio", "grpcio/openssl", "tls"]
+grpcio-tls-vendored = ["grpcio", "grpcio/openssl-vendored", "tls"]
+tonic = ["dep:tonic", "opentelemetry-proto/gen-tonic", "grpc"]
+tonic-tls = ["tonic/tls", "tls"]
+http = ["opentelemetry-proto/gen-protoc", "protobuf", "reqwest"]
+http-native-tls = ["http", "tls", "reqwest/native-tls"]
+http-native-tls-vendored = ["http", "tls", "reqwest/native-tls-vendored"]
+http-rustls-tls = ["http", "tls", "reqwest/rustls-tls"]
+http-rustls-tls-webpki-roots = ["http", "tls", "reqwest/rustls-tls-webpki-roots"]
+http-rustls-tls-native-roots = ["http", "tls", "reqwest/rustls-tls-native-roots"]
+http-json = ["http", "opentelemetry-proto/with-serde", "serde_json"]
+http-json-native-tls = ["http-json", "tls", "reqwest/native-tls"]
+http-json-native-tls-vendored = ["http-json", "tls", "reqwest/native-tls-vendored"]
+http-json-rustls-tls = ["http-json", "tls", "reqwest/rustls-tls"]
+http-json-rustls-tls-webpki-roots = ["http-json", "tls", "reqwest/rustls-tls-webpki-roots"]
+http-json-rustls-tls-native-roots = ["http-json", "tls", "reqwest/rustls-tls-native-roots"]
