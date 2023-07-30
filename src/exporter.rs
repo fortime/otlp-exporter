@@ -38,11 +38,10 @@ pub(crate) mod tonic {
 
     #[cfg(feature = "traces")]
     use opentelemetry_api::trace::TraceError;
-    use tonic::{
-        metadata::MetadataMap,
-        transport::{Certificate, Channel, ClientTlsConfig, Identity},
-        Status,
-    };
+    use tonic::{metadata::MetadataMap, transport::Channel, Status};
+
+    #[cfg(feature = "tls")]
+    use tonic::transport::{Certificate, ClientTlsConfig, Identity};
 
     use crate::{
         config::{Config, GrpcImpl, Protocol},
@@ -122,8 +121,11 @@ mod grpcio {
     use std::{collections::HashMap, sync::Arc};
 
     use grpcio::{
-        Channel, ChannelBuilder, ChannelCredentialsBuilder, Environment, Metadata, MetadataBuilder,
+        Channel, ChannelBuilder, Environment, Metadata, MetadataBuilder,
     };
+
+    #[cfg(feature = "tls")]
+    use grpcio::ChannelCredentialsBuilder;
 
     use crate::{
         config::{Config, GrpcImpl, Protocol},
@@ -195,7 +197,10 @@ mod grpcio {
 
 #[cfg(feature = "http")]
 mod http {
-    use reqwest::{Certificate, Client, Identity};
+    use reqwest::Client;
+
+    #[cfg(feature = "tls")]
+    use reqwest::{Certificate, Identity};
 
     use crate::{
         config::{Config, Protocol},
