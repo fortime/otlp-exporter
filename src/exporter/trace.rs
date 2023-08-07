@@ -166,6 +166,7 @@ pub use self::grpcio::GrpcioTraceExporter;
 
 #[cfg(feature = "http")]
 mod http {
+    use http::header::CONTENT_TYPE;
     use opentelemetry_proto::grpcio::trace_service::ExportTraceServiceRequest;
     use opentelemetry_sdk::export::trace::SpanData;
     use protobuf::Message;
@@ -219,7 +220,7 @@ mod http {
             match self.encoder {
                 crate::exporter::http::Encoder::Protobuf => {
                     request_builder = request_builder
-                        .header("Content-Type", "application/x-protobuf")
+                        .header(CONTENT_TYPE, "application/x-protobuf")
                         .body(payload.write_to_bytes().map_err(|e| {
                             OtlpExporterError::UnknownError(format!(
                                 "failed to serialize trace request to protobuf, error: {e}"
@@ -229,7 +230,7 @@ mod http {
                 #[cfg(feature = "http-json")]
                 crate::exporter::http::Encoder::Json => {
                     request_builder = request_builder
-                        .header("Content-Type", "application/json")
+                        .header(CONTENT_TYPE, "application/json")
                         .body(serde_json::to_vec(&payload).map_err(|e| {
                             OtlpExporterError::UnknownError(format!(
                                 "failed to serialize trace request to json, error: {e}"

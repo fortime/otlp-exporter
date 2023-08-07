@@ -11,6 +11,7 @@ pub mod metric;
 #[cfg(feature = "traces")]
 pub mod trace;
 
+#[allow(dead_code)]
 fn gen_header_map(headers: &HashMap<String, Vec<String>>) -> OtlpExporterResult<HeaderMap> {
     let mut header_map = HeaderMap::with_capacity(headers.len());
     for (key, values) in headers {
@@ -73,6 +74,7 @@ pub(crate) mod tonic {
                 }
             }
 
+            #[allow(unused_mut)]
             let mut channel_builder = Channel::builder(config.endpoint().clone())
                 .connect_timeout(config.timeout())
                 .timeout(config.timeout());
@@ -143,6 +145,8 @@ mod grpcio {
                     Protocol::Grpc,
                 )));
             }
+
+            #[allow(unused_mut)]
             let mut channel_builder = match config.grpc_impl() {
                 GrpcImpl::Grpcio(c) => {
                     ChannelBuilder::new(Arc::new(Environment::new(c.cq_count())))
@@ -213,7 +217,9 @@ mod http {
 
         fn try_from(config: &'a Config) -> Result<Self, Self::Error> {
             match config.protocol() {
-                Protocol::HttpJson | Protocol::HttpProtobuf => {}
+                Protocol::HttpProtobuf => {}
+                #[cfg(feature = "http-json")]
+                Protocol::HttpJson => {}
                 #[cfg(feature = "grpc")]
                 _ => {
                     return Err(OtlpExporterError::ConfigError(format!(
@@ -225,6 +231,7 @@ mod http {
                 }
             }
 
+            #[allow(unused_mut)]
             let mut builder = Client::builder()
                 .connect_timeout(config.timeout())
                 .timeout(config.timeout())

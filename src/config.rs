@@ -1,6 +1,6 @@
 //! OTLP exporter configurations.
 //!
-//! Refer: https://github.com/open-telemetry/opentelemetry-specification/blob/v1.21.0/specification/protocol/exporter.md
+//! Refer: `<https://github.com/open-telemetry/opentelemetry-specification/blob/v1.21.0/specification/protocol/exporter.md>`
 
 /// Env key: OTEL_EXPORTER_OTLP_ENDPOINT
 pub const OTEL_EXPORTER_OTLP_ENDPOINT: &str = "OTEL_EXPORTER_OTLP_ENDPOINT";
@@ -27,7 +27,7 @@ pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 pub const DEFAULT_HTTP_ENDPOINT: &str = "http://localhost:4318";
 /// OTLP default grpc endpoint
 #[cfg(feature = "grpc")]
-pub const DEFAULT_GRPC_ENDPOINT: &str = "http://localhost:4317";
+pub const DEFAULT_GRPC_ENDPOINT: &str = "localhost:4317";
 
 #[cfg(feature = "traces")]
 mod trace_envs {
@@ -49,7 +49,13 @@ mod trace_envs {
     /// Env key: OTEL_EXPORTER_OTLP_TRACES_PROTOCOL
     pub const OTEL_EXPORTER_OTLP_TRACES_PROTOCOL: &str = "OTEL_EXPORTER_OTLP_TRACES_PROTOCOL";
 }
-use std::{collections::HashMap, ffi::OsString, fmt::{Display, self}, fs, time::Duration};
+use std::{
+    collections::HashMap,
+    ffi::OsString,
+    fmt::{self, Display},
+    fs,
+    time::Duration,
+};
 
 use http::{uri::Scheme, Uri};
 #[cfg(feature = "traces")]
@@ -104,7 +110,7 @@ pub use log_envs::*;
 
 #[cfg(feature = "grpc")]
 mod grpc {
-    use std::fmt::{Display, self};
+    use std::fmt::{self, Display};
 
     #[cfg(feature = "grpcio")]
     pub mod grpcio {
@@ -117,7 +123,7 @@ mod grpc {
             fn default() -> Self {
                 Self {
                     // set to 2 like opentelmetry-otlp
-                    cq_count: 2
+                    cq_count: 2,
                 }
             }
         }
@@ -373,6 +379,33 @@ impl ConfigBuilder {
             Some(res)
         }
 
+        fn gen_endpoint(
+            cur_protocol: Protocol,
+            default_protocol: Protocol,
+            path: &str,
+            endpoint: &str,
+        ) -> String {
+            #[cfg(feature = "grpc")]
+            #[allow(irrefutable_let_patterns)]
+            if let Protocol::Grpc = cur_protocol {
+                // there is no need to append path
+                if cur_protocol == default_protocol {
+                    return endpoint.to_owned();
+                } else {
+                    return default_endpoint(cur_protocol).to_owned();
+                }
+            }
+            if cur_protocol == default_protocol {
+                return format!("{}{}", endpoint.trim_end_matches('/'), path);
+            } else {
+                return format!(
+                    "{}{}",
+                    default_endpoint(cur_protocol).trim_end_matches('/'),
+                    path
+                );
+            }
+        }
+
         let protocol;
         set_from_env_with_default!(
             protocol,
@@ -415,11 +448,7 @@ impl ConfigBuilder {
                     self.endpoint,
                     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
                     |e: OsString| e.to_str().map(ToString::to_string),
-                    if trace_protocol == protocol {
-                        format!("{}/v1/traces", self.endpoint.trim_end_matches('/'))
-                    } else {
-                        format!("{}/v1/traces", default_endpoint(trace_protocol).trim_end_matches('/'))
-                    }
+                    gen_endpoint(trace_protocol, protocol, "/v1/traces", &self.endpoint)
                 );
 
                 set_all_from_env!(
@@ -447,11 +476,7 @@ impl ConfigBuilder {
                     self.endpoint,
                     OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
                     |e: OsString| e.to_str().map(ToString::to_string),
-                    if metric_protocol == protocol {
-                        format!("{}/v1/metrics", self.endpoint.trim_end_matches('/'))
-                    } else {
-                        format!("{}/v1/metrics", default_endpoint(metric_protocol).trim_end_matches('/'))
-                    }
+                    gen_endpoint(metric_protocol, protocol, "/v1/metrics", &self.endpoint)
                 );
 
                 set_all_from_env!(
@@ -479,11 +504,7 @@ impl ConfigBuilder {
                     self.endpoint,
                     OTEL_EXPORTER_OTLP_LOGS_ENDPOINT,
                     |e: OsString| e.to_str().map(ToString::to_string),
-                    if log_protocol == protocol {
-                        format!("{}/v1/logs", self.endpoint.trim_end_matches('/'))
-                    } else {
-                        format!("{}/v1/logs", default_endpoint(log_protocol).trim_end_matches('/'))
-                    }
+                    gen_endpoint(log_protocol, protocol, "/v1/logs", &self.endpoint)
                 );
 
                 set_all_from_env!(
@@ -608,7 +629,7 @@ impl Config {
     }
 
     pub fn insecure(&self) -> bool {
-        self.endpoint.scheme_str() == Some("https")
+        self.endpoint.scheme_str() != Some("https")
     }
 
     /// Read ca certificate if `certificate_file` is not none.
@@ -667,7 +688,10 @@ impl TryFrom<ConfigBuilder> for Config {
     fn try_from(builder: ConfigBuilder) -> Result<Self, Self::Error> {
         let mut endpoint_parts = Uri::try_from(&builder.endpoint)
             .map_err(|e| {
-                OtlpExporterError::ConfigError(format!("endpoint is not a valid uri: {}", e))
+                OtlpExporterError::ConfigError(format!(
+                    "endpoint[{}] is not a valid uri: {}",
+                    builder.endpoint, e
+                ))
             })?
             .into_parts();
 
@@ -678,6 +702,10 @@ impl TryFrom<ConfigBuilder> for Config {
             } else {
                 endpoint_parts.scheme = Some(Scheme::HTTPS);
             }
+        }
+        if endpoint_parts.path_and_query.is_none() {
+            // It is insane, parts without path will failed to construct a uri
+            endpoint_parts.path_and_query = "/".try_into().ok();
         }
 
         Ok(Self {

@@ -1,8 +1,12 @@
 use std::mem;
 
 use opentelemetry_api::global;
-use opentelemetry_sdk::trace::{
-    Builder as TracerProviderBuilder, Config as TracerConfig, TraceRuntime, Tracer, TracerProvider,
+use opentelemetry_sdk::{
+    runtime::RuntimeChannel,
+    trace::{
+        BatchMessage, Builder as TracerProviderBuilder, Config as TracerConfig, Tracer,
+        TracerProvider,
+    },
 };
 
 use crate::{
@@ -60,6 +64,7 @@ impl TracePipeline {
             &provider,
             env!("CARGO_PKG_NAME"),
             Some(env!("CARGO_PKG_VERSION")),
+            None::<&'static str>,
             None,
         );
         global::set_tracer_provider(provider);
@@ -70,7 +75,10 @@ impl TracePipeline {
         self.install(|exporter| TracerProvider::builder().with_simple_exporter(exporter))
     }
 
-    pub fn install_batch<R: TraceRuntime>(self, runtime: R) -> OtlpExporterResult<Tracer> {
+    pub fn install_batch<R: RuntimeChannel<BatchMessage>>(
+        self,
+        runtime: R,
+    ) -> OtlpExporterResult<Tracer> {
         self.install(move |exporter| {
             TracerProvider::builder().with_batch_exporter(exporter, runtime)
         })
