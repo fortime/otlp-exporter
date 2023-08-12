@@ -146,6 +146,9 @@ mod grpcio {
                 )));
             }
 
+            let host = config.endpoint().host().expect("endpoint should have host");
+            let port = config.endpoint().port_u16().unwrap_or(4317);
+
             #[allow(unused_mut)]
             let mut channel_builder = match config.grpc_impl() {
                 GrpcImpl::Grpcio(c) => {
@@ -178,7 +181,7 @@ mod grpcio {
                     channel_builder.set_credentials(channel_credentials_builder.build());
             }
 
-            Ok(channel_builder.connect(&config.endpoint().to_string()))
+            Ok(channel_builder.connect(&format!("{}:{}", host, port)))
         }
     }
 
@@ -252,7 +255,7 @@ mod http {
                     (config.read_client_key()?, config.read_client_certificate()?)
                 {
                     builder = builder.identity(
-                        Identity::from_pem((key + &cert).as_bytes()).map_err(|e| {
+                        Identity::from_pkcs8_pem(key.as_bytes(), cert.as_bytes()).map_err(|e| {
                             OtlpExporterError::ConfigError(format!(
                                 "invalid client key or client certificate, error: {e}"
                             ))
