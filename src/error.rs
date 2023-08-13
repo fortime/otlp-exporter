@@ -18,6 +18,9 @@ pub enum OtlpExporterError {
     #[cfg(feature = "http")]
     #[error("reqwest error: {0}")]
     ReqwestError(#[from] reqwest::Error),
+    #[cfg(feature = "http")]
+    #[error("unsupported: {0}")]
+    Unsupported(String),
     #[error("unknown error: {0}")]
     UnknownError(String),
 }

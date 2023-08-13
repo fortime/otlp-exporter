@@ -19,6 +19,7 @@ license-file = "LICENSE"
 [dev-dependencies]
 opentelemetry-semantic-conventions = "0.12.0"
 tokio = { version = "1.29.1", default-features = false, features = ["rt-multi-thread", "macros"] }
+opentelemetry_sdk = { version = "0.20.0", default-features = false, features = ["rt-tokio"] }
 
 [dependencies]
 futures = { version = "0.3.28", default-features = false, features = ["std"] }

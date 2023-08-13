@@ -10,7 +10,7 @@ use opentelemetry_sdk::{
 };
 
 use crate::{
-    config::{ConfigBuilder, DataType},
+    config::{ConfigBuilder, DataType, Protocol},
     error::OtlpExporterResult,
     exporter::trace::TraceExporter,
     Pipeline,
@@ -48,14 +48,17 @@ impl TracePipeline {
 
     fn install(
         self,
-        builder_creator: impl FnOnce(TraceExporter) -> TracerProviderBuilder,
+        builder_creator: impl FnOnce(
+            Protocol,
+            TraceExporter,
+        ) -> OtlpExporterResult<TracerProviderBuilder>,
     ) -> OtlpExporterResult<Tracer> {
         let Self {
             config_builder,
             tracer_config,
         } = self;
         let config = config_builder.build()?;
-        let mut builder = builder_creator(TryFrom::try_from(config)?);
+        let mut builder = builder_creator(config.protocol(), TryFrom::try_from(config)?)?;
         if let Some(tracer_config) = tracer_config {
             builder = builder.with_config(tracer_config);
         }
@@ -71,16 +74,32 @@ impl TracePipeline {
         Ok(tracer)
     }
 
+    /// build the tracer
     pub fn install_simple(self) -> OtlpExporterResult<Tracer> {
-        self.install(|exporter| TracerProvider::builder().with_simple_exporter(exporter))
+        self.install(|protocol, exporter| {
+            match protocol {
+                #[cfg(feature = "http")]
+                Protocol::HttpProtobuf => {
+                    let _ = exporter;
+                    Err(crate::error::OtlpExporterError::Unsupported(format!("install_simple can't be worked with http/protobuf, use install_batch with tokio instead")))
+                },
+                #[cfg(feature = "http-json")]
+                Protocol::HttpJson => {
+                    let _ = exporter;
+                    Err(crate::error::OtlpExporterError::Unsupported(format!("install_simple can't be worked with http/json, use install_batch with tokio instead")))
+                },
+                #[cfg(feature = "grpc")]
+                _ => Ok(TracerProvider::builder().with_simple_exporter(exporter)),
+            }
+        })
     }
 
     pub fn install_batch<R: RuntimeChannel<BatchMessage>>(
         self,
         runtime: R,
     ) -> OtlpExporterResult<Tracer> {
-        self.install(move |exporter| {
-            TracerProvider::builder().with_batch_exporter(exporter, runtime)
+        self.install(move |_, exporter| {
+            Ok(TracerProvider::builder().with_batch_exporter(exporter, runtime))
         })
     }
 }
