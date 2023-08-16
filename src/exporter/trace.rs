@@ -167,15 +167,12 @@ pub use self::grpcio::GrpcioTraceExporter;
 #[cfg(feature = "http")]
 mod http {
     use http::header::CONTENT_TYPE;
-    use opentelemetry_proto::grpcio::trace_service::ExportTraceServiceRequest;
+    use opentelemetry_proto::tonic::collector::trace::v1::ExportTraceServiceRequest;
     use opentelemetry_sdk::export::trace::SpanData;
-    use protobuf::Message;
+    use prost::Message;
     use reqwest::{Client, RequestBuilder};
 
-    use crate::{
-        config::Config,
-        error::{OtlpExporterError, OtlpExporterResult},
-    };
+    use crate::{config::Config, error::OtlpExporterResult};
 
     use super::TraceExporter;
 
@@ -197,11 +194,12 @@ mod http {
 
         #[cfg(feature = "http-json")]
         pub(super) fn try_new_in_json(config: Config) -> OtlpExporterResult<Self> {
-            Ok(Self {
+            let _ = Self {
                 client: Client::try_from(&config)?,
                 encoder: crate::exporter::http::Encoder::Json,
                 config,
-            })
+            };
+            unimplemented!("it needs time to find out how to serialize to json, refer: https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding")
         }
 
         pub fn gen_request_builder(
@@ -209,10 +207,7 @@ mod http {
             batch: Vec<SpanData>,
         ) -> OtlpExporterResult<RequestBuilder> {
             let payload = ExportTraceServiceRequest {
-                resource_spans: protobuf::RepeatedField::from_vec(
-                    batch.into_iter().map(Into::into).collect(),
-                ),
-                ..Default::default()
+                resource_spans: batch.into_iter().map(Into::into).collect(),
             };
 
             let mut request_builder = self.client.post(self.config.endpoint().to_string());
@@ -221,14 +216,12 @@ mod http {
                 crate::exporter::http::Encoder::Protobuf => {
                     request_builder = request_builder
                         .header(CONTENT_TYPE, "application/x-protobuf")
-                        .body(payload.write_to_bytes().map_err(|e| {
-                            OtlpExporterError::UnknownError(format!(
-                                "failed to serialize trace request to protobuf, error: {e}"
-                            ))
-                        })?);
+                        .body(payload.encode_to_vec());
                 }
                 #[cfg(feature = "http-json")]
                 crate::exporter::http::Encoder::Json => {
+                    todo!("it needs time to find out how to serialize to json, refer: https://opentelemetry.io/docs/specs/otlp/#json-protobuf-encoding");
+                    /*
                     request_builder = request_builder
                         .header(CONTENT_TYPE, "application/json")
                         .body(serde_json::to_vec(&payload).map_err(|e| {
@@ -236,6 +229,7 @@ mod http {
                                 "failed to serialize trace request to json, error: {e}"
                             ))
                         })?);
+                    */
                 }
             }
 

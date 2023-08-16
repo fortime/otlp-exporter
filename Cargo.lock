@@ -1006,7 +1006,6 @@ dependencies = [
  "opentelemetry_sdk",
  "prost",
  "protobuf",
- "serde",
  "tonic",
 ]
 
@@ -1078,9 +1077,9 @@ dependencies = [
  "opentelemetry-semantic-conventions",
  "opentelemetry_api",
  "opentelemetry_sdk",
+ "prost",
  "protobuf",
  "reqwest",
- "serde_json",
  "thiserror",
  "tokio",
  "tonic",
@@ -1202,10 +1201,6 @@ name = "protobuf"
 version = "2.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "106dd99e98437432fed6519dedecfade6a06a73bb7b2a1e019fdd2bee5778d94"
-dependencies = [
- "serde",
- "serde_derive",
-]
 
 [[package]]
 name = "quote"
@@ -1486,20 +1481,6 @@ name = "serde"
 version = "1.0.177"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63ba2516aa6bf82e0b19ca8b50019d52df58455d3cf9bdaf6315225fdd0c560a"
-dependencies = [
- "serde_derive",
-]
-
-[[package]]
-name = "serde_derive"
-version = "1.0.177"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "401797fe7833d72109fedec6bfcbe67c0eed9b99772f26eb8afd261f0abc6fd3"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn 2.0.25",
-]
 
 [[package]]
 name = "serde_json"
