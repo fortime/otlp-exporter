@@ -1080,6 +1080,7 @@ dependencies = [
  "prost",
  "protobuf",
  "reqwest",
+ "temp-env",
  "thiserror",
  "tokio",
  "tonic",
@@ -1575,6 +1576,15 @@ name = "sync_wrapper"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2047c6ded9c721764247e62cd3b03c09ffc529b2ba5b10ec482ae507a4a70160"
+
+[[package]]
+name = "temp-env"
+version = "0.3.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9547444bfe52cbd79515c6c8087d8ae6ca8d64d2d31a27746320f5cb81d1a15c"
+dependencies = [
+ "parking_lot",
+]
 
 [[package]]
 name = "tempfile"

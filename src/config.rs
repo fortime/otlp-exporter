@@ -725,3 +725,300 @@ impl From<Config> for ConfigBuilder {
         value.builder
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        default_headers, Config, ConfigBuilder, DataType, OTEL_EXPORTER_OTLP_ENDPOINT,
+        OTEL_EXPORTER_OTLP_HEADERS, OTEL_EXPORTER_OTLP_LOGS_ENDPOINT,
+        OTEL_EXPORTER_OTLP_LOGS_HEADERS, OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
+        OTEL_EXPORTER_OTLP_METRICS_HEADERS, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
+        OTEL_EXPORTER_OTLP_TRACES_HEADERS,
+    };
+    #[cfg(feature = "grpc")]
+    use super::{
+        OTEL_EXPORTER_OTLP_INSECURE, OTEL_EXPORTER_OTLP_LOGS_INSECURE,
+        OTEL_EXPORTER_OTLP_METRICS_INSECURE, OTEL_EXPORTER_OTLP_PROTOCOL,
+        OTEL_EXPORTER_OTLP_TRACES_INSECURE,
+    };
+
+    fn build_config_with_env(data_type: Option<DataType>) -> Config {
+        ConfigBuilder::default()
+            .with_env(data_type)
+            .try_into()
+            .unwrap()
+    }
+
+    #[test]
+    fn test_endpoint_from_env() {
+        let expected_endpoint = "https://test_endpoint_from_env:4317".to_string();
+        let expected_endpoint_with_slash = "https://test_endpoint_from_env:4317/".to_string();
+        temp_env::with_vars(
+            vec![
+                (OTEL_EXPORTER_OTLP_ENDPOINT, Some(&expected_endpoint)),
+                #[cfg(feature = "traces")]
+                (OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, None),
+                #[cfg(feature = "metrics")]
+                (OTEL_EXPORTER_OTLP_METRICS_ENDPOINT, None),
+                #[cfg(feature = "logs")]
+                (OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, None),
+            ],
+            || {
+                // endpoint without specifying the data type
+                assert_eq!(
+                    build_config_with_env(None).endpoint().to_string(),
+                    expected_endpoint_with_slash
+                );
+                // endpoint for traces
+                #[cfg(feature = "traces")]
+                {
+                    assert_eq!(
+                        build_config_with_env(Some(DataType::Trace))
+                            .endpoint()
+                            .to_string(),
+                        format!("{}/v1/traces", expected_endpoint),
+                    );
+                    std::env::set_var(OTEL_EXPORTER_OTLP_TRACES_ENDPOINT, &expected_endpoint);
+                    assert_eq!(
+                        build_config_with_env(Some(DataType::Trace))
+                            .endpoint()
+                            .to_string(),
+                        expected_endpoint_with_slash,
+                    );
+                }
+
+                // endpoint for metrics
+                #[cfg(feature = "metrics")]
+                {
+                    assert_eq!(
+                        build_config_with_env(Some(DataType::Metric))
+                            .endpoint()
+                            .to_string(),
+                        format!("{}/v1/metrics", expected_endpoint),
+                    );
+                    std::env::set_var(OTEL_EXPORTER_OTLP_METRICS_ENDPOINT, &expected_endpoint);
+                    assert_eq!(
+                        build_config_with_env(Some(DataType::Metric))
+                            .endpoint()
+                            .to_string(),
+                        expected_endpoint_with_slash
+                    );
+                }
+
+                // endpoint for logs
+                #[cfg(feature = "logs")]
+                {
+                    assert_eq!(
+                        build_config_with_env(Some(DataType::Log))
+                            .endpoint()
+                            .to_string(),
+                        format!("{}/v1/logs", expected_endpoint),
+                    );
+                    std::env::set_var(OTEL_EXPORTER_OTLP_LOGS_ENDPOINT, &expected_endpoint);
+                    assert_eq!(
+                        build_config_with_env(Some(DataType::Log))
+                            .endpoint()
+                            .to_string(),
+                        expected_endpoint_with_slash
+                    );
+                }
+
+                // test if trailing '/' will be trimmed.
+                std::env::set_var(OTEL_EXPORTER_OTLP_ENDPOINT, &expected_endpoint_with_slash);
+                #[cfg(feature = "traces")]
+                {
+                    std::env::remove_var(OTEL_EXPORTER_OTLP_TRACES_ENDPOINT);
+                    assert_eq!(
+                        build_config_with_env(Some(DataType::Trace))
+                            .endpoint()
+                            .to_string(),
+                        format!("{}/v1/traces", expected_endpoint),
+                    );
+                }
+
+                #[cfg(feature = "metrics")]
+                {
+                    std::env::remove_var(OTEL_EXPORTER_OTLP_METRICS_ENDPOINT);
+                    assert_eq!(
+                        build_config_with_env(Some(DataType::Metric))
+                            .endpoint()
+                            .to_string(),
+                        format!("{}/v1/metrics", expected_endpoint),
+                    );
+                }
+
+                #[cfg(feature = "logs")]
+                {
+                    std::env::remove_var(OTEL_EXPORTER_OTLP_LOGS_ENDPOINT);
+                    assert_eq!(
+                        build_config_with_env(Some(DataType::Log))
+                            .endpoint()
+                            .to_string(),
+                        format!("{}/v1/logs", expected_endpoint),
+                    );
+                }
+            },
+        );
+    }
+
+    #[test]
+    fn test_headers_from_env() {
+        let mut otlp_headers = default_headers();
+        otlp_headers.insert("Accept".to_owned(), vec!["text/plain".to_owned()]);
+        let mut otlp_traces_headers = default_headers();
+        otlp_traces_headers.insert("Accept".to_owned(), vec!["application/json".to_owned()]);
+        let mut otlp_metrics_headers = default_headers();
+        otlp_metrics_headers.insert("Accept".to_owned(), vec!["application/xml".to_owned()]);
+        let mut otlp_logs_headers = default_headers();
+        otlp_logs_headers.insert("Accept".to_owned(), vec!["application/html".to_owned()]);
+        temp_env::with_vars(
+            vec![
+                (OTEL_EXPORTER_OTLP_HEADERS, None::<String>),
+                #[cfg(feature = "traces")]
+                (OTEL_EXPORTER_OTLP_TRACES_HEADERS, None),
+                #[cfg(feature = "metrics")]
+                (OTEL_EXPORTER_OTLP_METRICS_HEADERS, None),
+                #[cfg(feature = "logs")]
+                (OTEL_EXPORTER_OTLP_LOGS_HEADERS, None),
+            ],
+            || {
+                assert_eq!(build_config_with_env(None).headers(), &default_headers());
+
+                #[cfg(feature = "traces")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Trace)).headers(),
+                    &default_headers()
+                );
+                #[cfg(feature = "metrics")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Metric)).headers(),
+                    &default_headers()
+                );
+                #[cfg(feature = "logs")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Log)).headers(),
+                    &default_headers()
+                );
+
+                std::env::set_var(OTEL_EXPORTER_OTLP_HEADERS, "Accept=text/plain");
+                assert_eq!(build_config_with_env(None).headers(), &otlp_headers);
+
+                #[cfg(feature = "traces")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Trace)).headers(),
+                    &otlp_headers
+                );
+                #[cfg(feature = "metrics")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Metric)).headers(),
+                    &otlp_headers
+                );
+                #[cfg(feature = "logs")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Log)).headers(),
+                    &otlp_headers
+                );
+
+                #[cfg(feature = "traces")]
+                std::env::set_var(OTEL_EXPORTER_OTLP_TRACES_HEADERS, "Accept=application/json");
+                #[cfg(feature = "metrics")]
+                std::env::set_var(OTEL_EXPORTER_OTLP_METRICS_HEADERS, "Accept=application/xml");
+                #[cfg(feature = "logs")]
+                std::env::set_var(OTEL_EXPORTER_OTLP_LOGS_HEADERS, "Accept=application/html");
+                assert_eq!(build_config_with_env(None).headers(), &otlp_headers);
+
+                #[cfg(feature = "traces")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Trace)).headers(),
+                    &otlp_traces_headers
+                );
+                #[cfg(feature = "metrics")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Metric)).headers(),
+                    &otlp_metrics_headers
+                );
+                #[cfg(feature = "logs")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Log)).headers(),
+                    &otlp_logs_headers
+                );
+            },
+        );
+    }
+
+    #[cfg(feature = "grpc")]
+    #[test]
+    fn test_insecure_from_env() {
+        temp_env::with_vars(
+            vec![
+                // insecure is used only when there is no https:// or http:// in endpoint
+                (
+                    OTEL_EXPORTER_OTLP_ENDPOINT,
+                    Some("localhost:4317".to_owned()),
+                ),
+                (OTEL_EXPORTER_OTLP_PROTOCOL, Some("grpc".to_owned())),
+                (OTEL_EXPORTER_OTLP_INSECURE, None::<String>),
+                #[cfg(feature = "traces")]
+                (OTEL_EXPORTER_OTLP_TRACES_INSECURE, None),
+                #[cfg(feature = "metrics")]
+                (OTEL_EXPORTER_OTLP_METRICS_INSECURE, None),
+                #[cfg(feature = "logs")]
+                (OTEL_EXPORTER_OTLP_LOGS_INSECURE, None),
+            ],
+            || {
+                assert_eq!(build_config_with_env(None).insecure(), false);
+
+                #[cfg(feature = "traces")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Trace)).insecure(),
+                    false
+                );
+                #[cfg(feature = "metrics")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Metric)).insecure(),
+                    false
+                );
+                #[cfg(feature = "logs")]
+                assert_eq!(build_config_with_env(Some(DataType::Log)).insecure(), false);
+
+                std::env::set_var(OTEL_EXPORTER_OTLP_INSECURE, "true");
+                assert_eq!(build_config_with_env(None).insecure(), true);
+
+                #[cfg(feature = "traces")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Trace)).insecure(),
+                    true
+                );
+                #[cfg(feature = "metrics")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Metric)).insecure(),
+                    true
+                );
+                #[cfg(feature = "logs")]
+                assert_eq!(build_config_with_env(Some(DataType::Log)).insecure(), true);
+
+                std::env::set_var(OTEL_EXPORTER_OTLP_INSECURE, "false");
+                #[cfg(feature = "traces")]
+                std::env::set_var(OTEL_EXPORTER_OTLP_TRACES_INSECURE, "true");
+                #[cfg(feature = "metrics")]
+                std::env::set_var(OTEL_EXPORTER_OTLP_METRICS_INSECURE, "true");
+                #[cfg(feature = "logs")]
+                std::env::set_var(OTEL_EXPORTER_OTLP_LOGS_INSECURE, "true");
+                assert_eq!(build_config_with_env(None).insecure(), false);
+
+                #[cfg(feature = "traces")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Trace)).insecure(),
+                    true
+                );
+                #[cfg(feature = "metrics")]
+                assert_eq!(
+                    build_config_with_env(Some(DataType::Metric)).insecure(),
+                    true
+                );
+                #[cfg(feature = "logs")]
+                assert_eq!(build_config_with_env(Some(DataType::Log)).insecure(), true);
+            },
+        );
+    }
+}
