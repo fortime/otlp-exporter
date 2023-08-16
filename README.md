@@ -1,9 +1,31 @@
+**_THIS IS A PERSONAL PROJECT. IT IS STILL IN DEVELOPMENT. USE ON YOUR OWN RISK._**
+
 An exporter exports trace, metric and log data in the OTLP format.
+
+# Support Matrix
+
+## Protocol
+
+| protocol         | trace    | metric   | log      |
+| ---------------- | -------- | -------- | -------- |
+| grpc(tonic)      | &check;  | &#x2610; | &#x2610; |
+| grpc(grpcio)[^1] | &check;  | &#x2610; | &#x2610; |
+| http/protobuf    | &check;  | &#x2610; | &#x2610; |
+| http/json        | blocking | &#x2610; | &#x2610; |
+
+## TLS
+
+| dep     | std      | provided ca | client key |
+| ------- | -------- | ----------- | ---------- |
+| tonic   | not test | not test    | not test   |
+| grpcio  | not test | not test    | not test   |
+| reqwest | not test | not test    | not test   |
 
 # Examples
 
-* For `grpc`, we can use `install_simple` simply. It uses `future_executors`.
-```
+- For `grpc`, we can use `install_simple` simply. It uses `future_executors`.
+
+```rust
 use opentelemetry_api::{trace::Tracer, global, KeyValue};
 use opentelemetry_sdk::Resource;
 
@@ -33,8 +55,9 @@ pub async fn main() {
 }
 ```
 
-* For `http/protocol` and `http/json`, it depends on `reqwest` which depends on `tokio`. So, we must use `install_batch` with `Tokio`.
-```
+- For `http/protocol` and `http/json`, it depends on `reqwest` which depends on `tokio`. So, we must use `install_batch` with `Tokio`.
+
+```rust
 use opentelemetry_api::{trace::Tracer, global, KeyValue};
 use opentelemetry_sdk::{runtime::Tokio, Resource};
 
@@ -63,3 +86,5 @@ pub async fn main() {
     global::shutdown_tracer_provider();
 }
 ```
+
+[^1]: As of 2023-08-16, grpc 0.12.1 can't be compiled with gcc 13, you can patch it with its git repo.
