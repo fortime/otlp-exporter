@@ -122,9 +122,7 @@ pub(crate) mod tonic {
 mod grpcio {
     use std::{collections::HashMap, sync::Arc};
 
-    use grpcio::{
-        Channel, ChannelBuilder, Environment, Metadata, MetadataBuilder,
-    };
+    use grpcio::{Channel, ChannelBuilder, Environment, Metadata, MetadataBuilder};
 
     #[cfg(feature = "tls")]
     use grpcio::ChannelCredentialsBuilder;
@@ -190,7 +188,7 @@ mod grpcio {
 
         for (key, values) in headers {
             for value in values {
-                builder.add_str(&*key, &*value).map_err(|e| {
+                builder.add_str(key, value).map_err(|e| {
                     OtlpExporterError::ConfigError(format!(
                         "invalid header key/value: {key}/{value}, error: {e}"
                     ))

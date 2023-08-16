@@ -24,7 +24,7 @@ impl MetricPipeline {
         mut self,
         customizer: impl FnOnce(ConfigBuilder) -> ConfigBuilder,
     ) -> MetricPipeline {
-        let config_builder = mem::replace(&mut self.config_builder, Default::default());
+        let config_builder = mem::take(&mut self.config_builder);
         self.config_builder = customizer(config_builder);
         self
     }

@@ -187,8 +187,8 @@ pub use grpc::GrpcImpl;
 use crate::error::{OtlpExporterError, OtlpExporterResult};
 
 macro_rules! set_from_env_with_default {
-    ($ident:expr, $env_name:ident, $fn:expr, $default:expr $(,)?) => {
-        $ident = match std::env::var_os($env_name) {
+    ($env_name:ident, $fn:expr, $default:expr $(,)?) => {
+        match std::env::var_os($env_name) {
             Some(v) => match $fn(v) {
                 Some(v) => v,
                 None => $default,
@@ -396,27 +396,24 @@ impl ConfigBuilder {
                 }
             }
             if cur_protocol == default_protocol {
-                return format!("{}{}", endpoint.trim_end_matches('/'), path);
+                format!("{}{}", endpoint.trim_end_matches('/'), path)
             } else {
-                return format!(
+                format!(
                     "{}{}",
                     default_endpoint(cur_protocol).trim_end_matches('/'),
                     path
-                );
+                )
             }
         }
 
-        let protocol;
-        set_from_env_with_default!(
-            protocol,
+        let protocol = set_from_env_with_default!(
             OTEL_EXPORTER_OTLP_PROTOCOL,
             parse_protocol,
             default_protocol(),
         );
         self.protocol = protocol;
 
-        set_from_env_with_default!(
-            self.endpoint,
+        self.endpoint = set_from_env_with_default!(
             OTEL_EXPORTER_OTLP_ENDPOINT,
             |e: OsString| e.to_str().map(ToString::to_string),
             default_endpoint(self.protocol).to_string(),
@@ -435,17 +432,14 @@ impl ConfigBuilder {
         match data_type {
             #[cfg(feature = "traces")]
             Some(DataType::Trace) => {
-                let trace_protocol;
-                set_from_env_with_default!(
-                    trace_protocol,
+                let trace_protocol = set_from_env_with_default!(
                     OTEL_EXPORTER_OTLP_TRACES_PROTOCOL,
                     parse_protocol,
                     protocol
                 );
                 self.protocol = trace_protocol;
 
-                set_from_env_with_default!(
-                    self.endpoint,
+                self.endpoint = set_from_env_with_default!(
                     OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
                     |e: OsString| e.to_str().map(ToString::to_string),
                     gen_endpoint(trace_protocol, protocol, "/v1/traces", &self.endpoint)
@@ -463,17 +457,14 @@ impl ConfigBuilder {
             },
             #[cfg(feature = "metrics")]
             Some(DataType::Metric) => {
-                let metric_protocol;
-                set_from_env_with_default!(
-                    metric_protocol,
+                let metric_protocol = set_from_env_with_default!(
                     OTEL_EXPORTER_OTLP_METRICS_PROTOCOL,
                     parse_protocol,
                     protocol
                 );
                 self.protocol = metric_protocol;
 
-                set_from_env_with_default!(
-                    self.endpoint,
+                self.endpoint = set_from_env_with_default!(
                     OTEL_EXPORTER_OTLP_METRICS_ENDPOINT,
                     |e: OsString| e.to_str().map(ToString::to_string),
                     gen_endpoint(metric_protocol, protocol, "/v1/metrics", &self.endpoint)
@@ -491,17 +482,14 @@ impl ConfigBuilder {
             },
             #[cfg(feature = "logs")]
             Some(DataType::Log) => {
-                let log_protocol;
-                set_from_env_with_default!(
-                    log_protocol,
+                let log_protocol = set_from_env_with_default!(
                     OTEL_EXPORTER_OTLP_LOGS_PROTOCOL,
                     parse_protocol,
                     protocol
                 );
                 self.protocol = log_protocol;
 
-                set_from_env_with_default!(
-                    self.endpoint,
+                self.endpoint = set_from_env_with_default!(
                     OTEL_EXPORTER_OTLP_LOGS_ENDPOINT,
                     |e: OsString| e.to_str().map(ToString::to_string),
                     gen_endpoint(log_protocol, protocol, "/v1/logs", &self.endpoint)
@@ -966,36 +954,24 @@ mod tests {
                 (OTEL_EXPORTER_OTLP_LOGS_INSECURE, None),
             ],
             || {
-                assert_eq!(build_config_with_env(None).insecure(), false);
+                assert!(!build_config_with_env(None).insecure());
 
                 #[cfg(feature = "traces")]
-                assert_eq!(
-                    build_config_with_env(Some(DataType::Trace)).insecure(),
-                    false
-                );
+                assert!(!build_config_with_env(Some(DataType::Trace)).insecure(),);
                 #[cfg(feature = "metrics")]
-                assert_eq!(
-                    build_config_with_env(Some(DataType::Metric)).insecure(),
-                    false
-                );
+                assert!(!build_config_with_env(Some(DataType::Metric)).insecure(),);
                 #[cfg(feature = "logs")]
-                assert_eq!(build_config_with_env(Some(DataType::Log)).insecure(), false);
+                assert!(!build_config_with_env(Some(DataType::Log)).insecure());
 
                 std::env::set_var(OTEL_EXPORTER_OTLP_INSECURE, "true");
-                assert_eq!(build_config_with_env(None).insecure(), true);
+                assert!(build_config_with_env(None).insecure());
 
                 #[cfg(feature = "traces")]
-                assert_eq!(
-                    build_config_with_env(Some(DataType::Trace)).insecure(),
-                    true
-                );
+                assert!(build_config_with_env(Some(DataType::Trace)).insecure(),);
                 #[cfg(feature = "metrics")]
-                assert_eq!(
-                    build_config_with_env(Some(DataType::Metric)).insecure(),
-                    true
-                );
+                assert!(build_config_with_env(Some(DataType::Metric)).insecure(),);
                 #[cfg(feature = "logs")]
-                assert_eq!(build_config_with_env(Some(DataType::Log)).insecure(), true);
+                assert!(build_config_with_env(Some(DataType::Log)).insecure());
 
                 std::env::set_var(OTEL_EXPORTER_OTLP_INSECURE, "false");
                 #[cfg(feature = "traces")]
@@ -1004,20 +980,14 @@ mod tests {
                 std::env::set_var(OTEL_EXPORTER_OTLP_METRICS_INSECURE, "true");
                 #[cfg(feature = "logs")]
                 std::env::set_var(OTEL_EXPORTER_OTLP_LOGS_INSECURE, "true");
-                assert_eq!(build_config_with_env(None).insecure(), false);
+                assert!(!build_config_with_env(None).insecure());
 
                 #[cfg(feature = "traces")]
-                assert_eq!(
-                    build_config_with_env(Some(DataType::Trace)).insecure(),
-                    true
-                );
+                assert!(build_config_with_env(Some(DataType::Trace)).insecure(),);
                 #[cfg(feature = "metrics")]
-                assert_eq!(
-                    build_config_with_env(Some(DataType::Metric)).insecure(),
-                    true
-                );
+                assert!(build_config_with_env(Some(DataType::Metric)).insecure(),);
                 #[cfg(feature = "logs")]
-                assert_eq!(build_config_with_env(Some(DataType::Log)).insecure(), true);
+                assert!(build_config_with_env(Some(DataType::Log)).insecure());
             },
         );
     }
