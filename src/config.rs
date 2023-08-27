@@ -26,7 +26,7 @@ pub const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 #[cfg(feature = "http")]
 pub const DEFAULT_HTTP_ENDPOINT: &str = "http://localhost:4318";
 /// OTLP default grpc endpoint
-#[cfg(feature = "grpc")]
+#[cfg(feature = "_grpc")]
 pub const DEFAULT_GRPC_ENDPOINT: &str = "localhost:4317";
 
 #[cfg(feature = "traces")]
@@ -108,7 +108,7 @@ mod log_envs {
 #[cfg(feature = "logs")]
 pub use log_envs::*;
 
-#[cfg(feature = "grpc")]
+#[cfg(feature = "_grpc")]
 mod grpc {
     use std::fmt::{self, Display};
 
@@ -181,7 +181,7 @@ mod grpc {
         }
     }
 }
-#[cfg(feature = "grpc")]
+#[cfg(feature = "_grpc")]
 pub use grpc::GrpcImpl;
 
 use crate::error::{OtlpExporterError, OtlpExporterResult};
@@ -216,14 +216,14 @@ fn default_protocol() -> Protocol {
 
 /// Use grpc if http is disabled and one of grpcio and tonic is enabled. If all of http, grpcio
 /// and tonic are disabled, it won't compile.
-#[cfg(all(feature = "grpc", not(feature = "http")))]
+#[cfg(all(feature = "_grpc", not(feature = "http")))]
 fn default_protocol() -> Protocol {
     Protocol::Grpc
 }
 
 fn default_endpoint(protocol: Protocol) -> &'static str {
     match protocol {
-        #[cfg(feature = "grpc")]
+        #[cfg(feature = "_grpc")]
         Protocol::Grpc => DEFAULT_GRPC_ENDPOINT,
         #[cfg(feature = "http")]
         Protocol::HttpProtobuf => DEFAULT_HTTP_ENDPOINT,
@@ -247,7 +247,7 @@ fn default_headers() -> HashMap<String, Vec<String>> {
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Protocol {
-    #[cfg(feature = "grpc")]
+    #[cfg(feature = "_grpc")]
     Grpc,
     #[cfg(feature = "http")]
     HttpProtobuf,
@@ -258,7 +258,7 @@ pub enum Protocol {
 impl Display for Protocol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            #[cfg(feature = "grpc")]
+            #[cfg(feature = "_grpc")]
             Protocol::Grpc => f.write_str("grpc"),
             #[cfg(feature = "http")]
             Protocol::HttpProtobuf => f.write_str("http/protobuf"),
@@ -313,7 +313,7 @@ pub struct ConfigBuilder {
     protocol: Protocol,
 
     /// The implementation of grpc.
-    #[cfg(feature = "grpc")]
+    #[cfg(feature = "_grpc")]
     grpc_impl: GrpcImpl,
 
     /// Domain in the certificate.
@@ -341,7 +341,7 @@ impl ConfigBuilder {
                 "http/protobuf" => Some(Protocol::HttpProtobuf),
                 #[cfg(feature = "http-json")]
                 "http/json" => Some(Protocol::HttpJson),
-                #[cfg(feature = "grpc")]
+                #[cfg(feature = "_grpc")]
                 "grpc" => Some(Protocol::Grpc),
                 _ => None,
             }
@@ -385,7 +385,7 @@ impl ConfigBuilder {
             path: &str,
             endpoint: &str,
         ) -> String {
-            #[cfg(feature = "grpc")]
+            #[cfg(feature = "_grpc")]
             #[allow(irrefutable_let_patterns)]
             if let Protocol::Grpc = cur_protocol {
                 // there is no need to append path
@@ -569,7 +569,7 @@ impl ConfigBuilder {
         self
     }
 
-    #[cfg(feature = "grpc")]
+    #[cfg(feature = "_grpc")]
     pub fn with_grpc_impl(mut self, grpc_impl: GrpcImpl) -> Self {
         self.grpc_impl = grpc_impl;
         self
@@ -597,7 +597,7 @@ impl Default for ConfigBuilder {
             headers: default_headers(),
             timeout: DEFAULT_TIMEOUT,
             protocol,
-            #[cfg(feature = "grpc")]
+            #[cfg(feature = "_grpc")]
             grpc_impl: Default::default(),
             certificate_domain: None,
         }
@@ -659,7 +659,7 @@ impl Config {
         self.builder.protocol
     }
 
-    #[cfg(feature = "grpc")]
+    #[cfg(feature = "_grpc")]
     pub fn grpc_impl(&self) -> &GrpcImpl {
         &self.builder.grpc_impl
     }
@@ -723,7 +723,7 @@ mod tests {
         OTEL_EXPORTER_OTLP_METRICS_HEADERS, OTEL_EXPORTER_OTLP_TRACES_ENDPOINT,
         OTEL_EXPORTER_OTLP_TRACES_HEADERS,
     };
-    #[cfg(feature = "grpc")]
+    #[cfg(feature = "_grpc")]
     use super::{
         OTEL_EXPORTER_OTLP_INSECURE, OTEL_EXPORTER_OTLP_LOGS_INSECURE,
         OTEL_EXPORTER_OTLP_METRICS_INSECURE, OTEL_EXPORTER_OTLP_PROTOCOL,
@@ -934,7 +934,7 @@ mod tests {
         );
     }
 
-    #[cfg(feature = "grpc")]
+    #[cfg(feature = "_grpc")]
     #[test]
     fn test_insecure_from_env() {
         temp_env::with_vars(

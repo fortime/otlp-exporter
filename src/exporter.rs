@@ -41,7 +41,7 @@ pub(crate) mod tonic {
     use opentelemetry_api::trace::TraceError;
     use tonic::{metadata::MetadataMap, transport::Channel, Status};
 
-    #[cfg(feature = "tls")]
+    #[cfg(feature = "tonic-tls")]
     use tonic::transport::{Certificate, ClientTlsConfig, Identity};
 
     use crate::{
@@ -79,7 +79,7 @@ pub(crate) mod tonic {
                 .connect_timeout(config.timeout())
                 .timeout(config.timeout());
 
-            #[cfg(feature = "tls")]
+            #[cfg(feature = "tonic-tls")]
             if !config.insecure() {
                 let mut tls_config = ClientTlsConfig::new();
                 if let Some(ca) = config.read_certificate()? {
@@ -124,7 +124,7 @@ mod grpcio {
 
     use grpcio::{Channel, ChannelBuilder, Environment, Metadata, MetadataBuilder};
 
-    #[cfg(feature = "tls")]
+    #[cfg(feature = "_grpcio-tls")]
     use grpcio::ChannelCredentialsBuilder;
 
     use crate::{
@@ -162,7 +162,7 @@ mod grpcio {
                 }
             };
 
-            #[cfg(feature = "tls")]
+            #[cfg(feature = "_grpcio-tls")]
             if !config.insecure() {
                 let mut channel_credentials_builder = ChannelCredentialsBuilder::new();
                 if let Some(ca) = config.read_certificate()? {
@@ -204,7 +204,7 @@ mod grpcio {
 mod http {
     use reqwest::Client;
 
-    #[cfg(feature = "tls")]
+    #[cfg(feature = "_http-tls")]
     use reqwest::{Certificate, Identity};
 
     use crate::{
@@ -221,8 +221,15 @@ mod http {
                 Protocol::HttpProtobuf => {}
                 #[cfg(feature = "http-json")]
                 Protocol::HttpJson => {}
-                #[cfg(feature = "grpc")]
+                #[cfg(feature = "_grpc")]
                 _ => {
+                    #[cfg(not(feature = "http-json"))]
+                    return Err(OtlpExporterError::ConfigError(format!(
+                        "protocol is {}, not {}",
+                        config.protocol(),
+                        Protocol::HttpProtobuf,
+                    )));
+                    #[cfg(feature = "http-json")]
                     return Err(OtlpExporterError::ConfigError(format!(
                         "protocol is {}, not {}/{}",
                         config.protocol(),
@@ -238,7 +245,7 @@ mod http {
                 .timeout(config.timeout())
                 .default_headers(gen_header_map(config.headers())?);
 
-            #[cfg(feature = "tls")]
+            #[cfg(feature = "_http-tls")]
             if !config.insecure() {
                 if let Some(ca) = config.read_certificate()? {
                     builder = builder.add_root_certificate(
@@ -253,11 +260,23 @@ mod http {
                     (config.read_client_key()?, config.read_client_certificate()?)
                 {
                     builder = builder.identity(
+                        #[cfg(feature = "_http-native-tls")]
                         Identity::from_pkcs8_pem(key.as_bytes(), cert.as_bytes()).map_err(|e| {
                             OtlpExporterError::ConfigError(format!(
                                 "invalid client key or client certificate, error: {e}"
                             ))
                         })?,
+                        #[cfg(feature = "_http-rustls-tls")]
+                        {
+                            let mut buf = Vec::with_capacity(key.len() + cert.len());
+                            buf.extend_from_slice(key.as_bytes());
+                            buf.extend_from_slice(cert.as_bytes());
+                            Identity::from_pem(&buf).map_err(|e| {
+                                OtlpExporterError::ConfigError(format!(
+                                    "invalid client key or client certificate, error: {e}"
+                                ))
+                            })?
+                        },
                     );
                 }
             }

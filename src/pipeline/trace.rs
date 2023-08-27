@@ -88,7 +88,7 @@ impl TracePipeline {
                     let _ = exporter;
                     Err(crate::error::OtlpExporterError::Unsupported(format!("install_simple can't be worked with http/json, use install_batch with tokio instead")))
                 },
-                #[cfg(feature = "grpc")]
+                #[cfg(feature = "_grpc")]
                 _ => Ok(TracerProvider::builder().with_simple_exporter(exporter)),
             }
         })

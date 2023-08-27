@@ -1,7 +1,7 @@
 use futures::{future::BoxFuture, FutureExt};
 use opentelemetry_sdk::export::trace::{ExportResult, SpanData, SpanExporter};
 
-#[cfg(feature = "grpc")]
+#[cfg(feature = "_grpc")]
 use crate::config::GrpcImpl;
 
 use crate::{
@@ -24,7 +24,7 @@ impl TryFrom<Config> for TraceExporter {
 
     fn try_from(config: Config) -> Result<Self, Self::Error> {
         let exporter = match config.protocol() {
-            #[cfg(feature = "grpc")]
+            #[cfg(feature = "_grpc")]
             Protocol::Grpc => match config.grpc_impl() {
                 #[cfg(feature = "tonic")]
                 GrpcImpl::Tonic(_) => TonicTraceExporter::try_new(config)?.into(),
