@@ -23,6 +23,7 @@ opentelemetry_sdk = { version = "0.20.0", default-features = false, features = [
 temp-env = "0.3.4"
 
 [dependencies]
+async-trait = "0.1.73"
 futures = { version = "0.3.28", default-features = false, features = ["std"] }
 grpcio = { version = "0.12.1", optional = true, default-features = false }
 http = "0.2.9"

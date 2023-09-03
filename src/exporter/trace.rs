@@ -42,13 +42,19 @@ impl TryFrom<Config> for TraceExporter {
 
 #[cfg(feature = "tonic")]
 mod tonic {
+    use std::time::Duration;
+
+    use opentelemetry_api::trace::TraceError;
     use opentelemetry_proto::tonic::collector::trace::v1::{
         trace_service_client::TraceServiceClient, ExportTraceServiceRequest,
     };
     use opentelemetry_sdk::export::trace::SpanData;
-    use tonic::{metadata::MetadataMap, transport::Channel, Request};
+    use tonic::{metadata::MetadataMap, transport::Channel, Request, Status};
 
-    use crate::{config::Config, error::OtlpExporterResult};
+    use crate::{
+        config::Config,
+        error::{OtlpExporterError, OtlpExporterResult},
+    };
 
     use super::TraceExporter;
 
@@ -89,6 +95,14 @@ mod tonic {
     impl From<TonicTraceExporter> for TraceExporter {
         fn from(exporter: TonicTraceExporter) -> Self {
             TraceExporter::Tonic(exporter)
+        }
+    }
+
+    pub fn gen_trace_error(status: Status, timeout: Duration) -> Result<(), TraceError> {
+        match status.code() {
+            tonic::Code::Ok => Ok(()),
+            tonic::Code::Cancelled => Err(TraceError::ExportTimedOut(timeout)),
+            _ => Err(TraceError::from(OtlpExporterError::TonicError(status))),
         }
     }
 }
@@ -256,7 +270,7 @@ impl SpanExporter for TraceExporter {
                 let timeout = exporter.config().timeout();
                 async move {
                     if let Err(status) = client.export(request).await {
-                        return crate::exporter::tonic::gen_trace_error(status, timeout);
+                        return tonic::gen_trace_error(status, timeout);
                     }
                     Ok(())
                 }

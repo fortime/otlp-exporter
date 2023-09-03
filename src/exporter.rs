@@ -35,11 +35,9 @@ fn gen_header_map(headers: &HashMap<String, Vec<String>>) -> OtlpExporterResult<
 
 #[cfg(feature = "tonic")]
 pub(crate) mod tonic {
-    use std::{collections::HashMap, time::Duration};
+    use std::collections::HashMap;
 
-    #[cfg(feature = "traces")]
-    use opentelemetry_api::trace::TraceError;
-    use tonic::{metadata::MetadataMap, transport::Channel, Status};
+    use tonic::{metadata::MetadataMap, transport::Channel};
 
     #[cfg(feature = "tonic-tls")]
     use tonic::transport::{Certificate, ClientTlsConfig, Identity};
@@ -106,15 +104,6 @@ pub(crate) mod tonic {
         headers: &HashMap<String, Vec<String>>,
     ) -> OtlpExporterResult<MetadataMap> {
         Ok(MetadataMap::from_headers(gen_header_map(headers)?))
-    }
-
-    #[cfg(feature = "traces")]
-    pub fn gen_trace_error(status: Status, timeout: Duration) -> Result<(), TraceError> {
-        match status.code() {
-            tonic::Code::Ok => Ok(()),
-            tonic::Code::Cancelled => Err(TraceError::ExportTimedOut(timeout)),
-            _ => Err(TraceError::from(OtlpExporterError::TonicError(status))),
-        }
     }
 }
 
