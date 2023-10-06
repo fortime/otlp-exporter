@@ -59,8 +59,6 @@ impl<AS, TS> MetricExporter<AS, TS> {
 
 #[cfg(feature = "tonic")]
 mod tonic {
-    use std::time::Duration;
-
     use opentelemetry_api::metrics::MetricsError;
     use opentelemetry_proto::tonic::collector::metrics::v1::{
         metrics_service_client::MetricsServiceClient, ExportMetricsServiceRequest,
@@ -68,13 +66,15 @@ mod tonic {
     use opentelemetry_sdk::metrics::data::ResourceMetrics;
     use tonic::{metadata::MetadataMap, transport::Channel, Request, Status};
 
-    use crate::{config::Config, error::{OtlpExporterResult, OtlpExporterError}};
+    use crate::{
+        config::Config,
+        error::{OtlpExporterError, OtlpExporterResult},
+    };
 
     use super::InnerMetricExporter;
 
     #[derive(Debug)]
     pub struct TonicMetricExporter {
-        config: Config,
         metadata_map: MetadataMap,
         client: MetricsServiceClient<Channel>,
     }
@@ -84,7 +84,6 @@ mod tonic {
             Ok(Self {
                 metadata_map: crate::exporter::tonic::gen_metadata_map(config.headers())?,
                 client: MetricsServiceClient::new(Channel::try_from(&config)?),
-                config,
             })
         }
 
@@ -92,12 +91,13 @@ mod tonic {
             &self.client
         }
 
-        pub fn config(&self) -> &Config {
-            &self.config
-        }
-
-        pub fn gen_request(&self, metrics: &mut ResourceMetrics) -> Request<ExportMetricsServiceRequest> {
-            let mut request = Request::new(crate::converter::metric::tonic::convert(metrics));
+        pub fn gen_request(
+            &self,
+            metrics: &mut ResourceMetrics,
+        ) -> Request<ExportMetricsServiceRequest> {
+            let mut request = Request::new(ExportMetricsServiceRequest {
+                resource_metrics: vec![crate::converter::metric::tonic::convert_metrics(metrics)]
+            });
             *request.metadata_mut() = self.metadata_map.clone();
             request
         }
@@ -222,7 +222,9 @@ mod http {
             &self,
             metrics: &mut ResourceMetrics,
         ) -> OtlpExporterResult<RequestBuilder> {
-            let payload = crate::converter::metric::tonic::convert(metrics);
+            let payload = ExportMetricsServiceRequest {
+                resource_metrics: vec![crate::converter::metric::tonic::convert_metrics(metrics)]
+            };
 
             let mut request_builder = self.client.post(self.config.endpoint().to_string());
 
@@ -296,9 +298,11 @@ where
                     return tonic::gen_metric_error(status);
                 }
                 Ok(())
-        }
-        #[cfg(feature = "grpcio")]
+            }
+            #[cfg(feature = "grpcio")]
             InnerMetricExporter::Grpcio(exporter) => {
+                todo!()
+                /*
                 let request = exporter.gen_request(batch);
                 let client = exporter.client().clone();
                 let call_option = ::grpcio::CallOption::default()
@@ -309,10 +313,12 @@ where
                     .map_err(OtlpExporterError::from)?;
                 response.await.map_err(OtlpExporterError::from)?;
                 Ok(())
+                */
             }
             #[cfg(feature = "http")]
             InnerMetricExporter::Http(exporter) => {
-                exporter.gen_request_builder(metrics)?
+                exporter
+                    .gen_request_builder(metrics)?
                     .send()
                     .await
                     .map_err(OtlpExporterError::from)?;
